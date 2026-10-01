@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "class-factory",
+      "template": ".ctmpl/class-factory.cpp.ctmpl",
+      "include": ["src/widget.cpp"],
+      "mode": "exact"
+    },
+    {
+      "id": "no-throw",
+      "template": ".ctmpl/no-throw.cpp.ctmpl",
+      "include": ["src/throwing.cpp"],
+      "mode": "forbid",
+      "scope": "descendants"
+    }
+  ]
+}

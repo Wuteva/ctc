@@ -1,0 +1,6 @@
+class {{ Name }} {
+  {{* Constructors | field("constructor", "equal", true) }}
+  {{* PublicMembers | field("access", "equal", "public") }}
+  {{* ProtectedMembers | field("access", "equal", "protected") }}
+  {{* PrivateMembers | field("access", "equal", "private") }}
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "no-throw-ts",
+      "template": ".ctmpl/no-throw.ts.ctmpl",
+      "include": ["src/**/*.ts", "other/**/*.ts"],
+      "mode": "forbid",
+      "allowIgnore": true,
+      "scope": "descendants"
+    },
+    {
+      "id": "no-try-ts",
+      "template": ".ctmpl/no-try.ts.ctmpl",
+      "include": ["src/**/*.ts"],
+      "mode": "forbid",
+      "allowIgnore": true,
+      "scope": "descendants"
+    },
+    {
+      "id": "no-throw-cpp",
+      "template": ".ctmpl/no-throw.cpp.ctmpl",
+      "include": ["src/**/*.cpp"],
+      "mode": "forbid",
+      "allowIgnore": true,
+      "scope": "descendants"
+    }
+  ]
+}

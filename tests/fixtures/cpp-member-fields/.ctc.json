@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "cpp-member-fields",
+      "template": ".ctmpl/member-order.hpp.ctmpl",
+      "include": ["src/**/*.hpp"],
+      "mode": "every",
+      "scope": "descendants"
+    }
+  ]
+}

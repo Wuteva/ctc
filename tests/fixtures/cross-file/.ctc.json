@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "semanticRules": [
+    {
+      "kind": "companionFile",
+      "id": "unit-test-exists",
+      "include": ["src/**/*.ts"],
+      "exclude": ["src/**/*.test.ts"],
+      "companions": ["{dir}/{stem}.test.ts", "test/{subdir}/{stem}.test.ts"]
+    },
+    {
+      "kind": "headerSourcePairing",
+      "id": "header-source-pairing",
+      "include": ["include/**/*.hpp"],
+      "sources": ["{dir}/{stem}.cpp", "src/{subdir}/{stem}.cpp"],
+      "missingSource": "report"
+    }
+  ]
+}

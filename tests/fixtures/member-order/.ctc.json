@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "ts-member-order",
+      "template": ".ctmpl/member-order.ts.ctmpl",
+      "include": ["src/**/*.ts"],
+      "mode": "every",
+      "scope": "descendants",
+      "kinds": ["ClassDeclaration", "AbstractClassDeclaration"]
+    },
+    {
+      "id": "cpp-member-order",
+      "template": ".ctmpl/member-order.hpp.ctmpl",
+      "include": ["src/**/*.hpp"],
+      "mode": "every",
+      "scope": "descendants",
+      "kinds": ["ClassDeclaration", "StructDeclaration"]
+    }
+  ]
+}

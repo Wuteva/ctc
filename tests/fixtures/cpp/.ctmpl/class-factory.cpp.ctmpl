@@ -1,0 +1,7 @@
+{{* Prefix }}
+class {{ Name }} {
+{{* Members }}
+};
+std::unique_ptr<{{ Name }}> {{ Name | prefix("create") }}({{* Parameters }}) {
+{{* Statements }}
+}

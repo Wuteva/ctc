@@ -1,0 +1,30 @@
+[workspace]
+members = [
+  "crates/ctc-cli",
+  "crates/ctc-core",
+  "crates/ctc-language-cpp",
+  "crates/ctc-language-rust",
+  "crates/ctc-language-typescript",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/Wuteva/ctc"
+rust-version = "1.98"
+
+[workspace.dependencies]
+clap = { version = "4.5", features = ["derive"] }
+globset = "0.4"
+regex = "1"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+tree-sitter = "0.27"
+tree-sitter-cpp = "0.23.4"
+tree-sitter-rust = "0.24"
+tree-sitter-typescript = "0.23.2"
+
+[profile.release]
+lto = "thin"
+strip = true

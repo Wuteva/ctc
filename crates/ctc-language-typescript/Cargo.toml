@@ -1,0 +1,12 @@
+[package]
+name = "ctc-language-typescript"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ctc-core = { path = "../ctc-core" }
+serde_json.workspace = true
+tree-sitter.workspace = true
+tree-sitter-typescript.workspace = true

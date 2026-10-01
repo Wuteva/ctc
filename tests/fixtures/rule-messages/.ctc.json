@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "no-try",
+      "template": ".ctmpl/no-try.ts.ctmpl",
+      "include": ["src/**/*.ts"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Return a Result value instead of catching exceptions."
+    },
+    {
+      "id": "no-throw",
+      "template": ".ctmpl/no-throw.ts.ctmpl",
+      "include": ["src/**/*.ts"],
+      "mode": "forbid",
+      "scope": "descendants"
+    }
+  ],
+  "semanticRules": [
+    {
+      "kind": "returnPaths",
+      "id": "return-paths",
+      "include": ["src/**/*.ts"],
+      "typeName": "Result",
+      "message": "Each Result function must return a value on every path."
+    }
+  ]
+}

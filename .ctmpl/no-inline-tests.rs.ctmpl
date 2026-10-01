@@ -1,0 +1,3 @@
+mod {{ Name | matches("^tests$") }} {
+    {{* Items }}
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "optional-async",
+      "template": ".ctmpl/function.ts.ctmpl",
+      "include": ["src/*.ts"],
+      "mode": "exact"
+    }
+  ]
+}

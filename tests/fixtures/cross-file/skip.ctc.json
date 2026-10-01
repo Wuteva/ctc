@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "semanticRules": [
+    {
+      "kind": "headerSourcePairing",
+      "id": "header-source-pairing",
+      "include": ["include/**/*.hpp"],
+      "sources": ["src/{subdir}/{stem}.cpp"],
+      "checkOrder": false
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+[package]
+name = "ctc-cli"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ctc"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+ctc-core = { path = "../ctc-core" }
+ctc-language-cpp = { path = "../ctc-language-cpp" }
+ctc-language-rust = { path = "../ctc-language-rust" }
+ctc-language-typescript = { path = "../ctc-language-typescript" }
+serde_json.workspace = true
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"

@@ -1,0 +1,1 @@
+{{ Call | kind("MacroInvocation") | field("callee", "matches", "^(panic|todo|unimplemented|dbg)!$") }}

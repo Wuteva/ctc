@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "rules": [],
+  "semanticRules": [
+    {
+      "kind": "returnPaths",
+      "id": "return-paths",
+      "include": ["src/**/*.ts"],
+      "typeName": "Result"
+    },
+    {
+      "kind": "exceptionPolicy",
+      "id": "no-exceptions",
+      "include": ["src/**/*.ts"],
+      "forbidTry": true,
+      "forbidThrow": true,
+      "forbidPromiseReject": true,
+      "exceptionSources": ["dangerous.*"]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "tests-in-own-file",
+      "template": ".ctmpl/no-inline-tests.rs.ctmpl",
+      "include": ["crates/*/src/**/*.rs"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Move the tests into a tests.rs file and declare it with `#[cfg(test)] mod tests;`."
+    },
+    {
+      "id": "no-unwrap",
+      "template": ".ctmpl/no-unwrap.rs.ctmpl",
+      "include": ["crates/*/src/**/*.rs"],
+      "exclude": ["**/tests.rs"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Return an error instead of calling unwrap in production code."
+    },
+    {
+      "id": "no-panic-macros",
+      "template": ".ctmpl/no-panic-macros.rs.ctmpl",
+      "include": ["crates/*/src/**/*.rs"],
+      "exclude": ["**/tests.rs"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Report an error diagnostic instead of panicking or leaving debug code."
+    },
+    {
+      "id": "no-lint-escapes",
+      "template": ".ctmpl/no-lint-escapes.rs.ctmpl",
+      "include": ["crates/*/src/**/*.rs"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Fix the code, or change a threshold in clippy.toml, instead of silencing a lint."
+    },
+    {
+      "id": "short-functions",
+      "template": ".ctmpl/long-function.rs.ctmpl",
+      "include": ["crates/*/src/**/*.rs"],
+      "exclude": ["**/tests.rs"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Split this function. A function can span at most 100 lines."
+    },
+    {
+      "id": "forbid-unsafe",
+      "template": ".ctmpl/forbid-unsafe.rs.ctmpl",
+      "include": ["crates/*/src/lib.rs", "crates/*/src/main.rs"],
+      "mode": "contains",
+      "message": "Every crate root must start with `#![forbid(unsafe_code)]`."
+    }
+  ],
+  "semanticRules": [
+    {
+      "kind": "fileLength",
+      "id": "short-source-files",
+      "include": ["crates/*/src/**/*.rs"],
+      "maxLines": 800,
+      "message": "Split this file. A source file can have at most 800 lines."
+    },
+    {
+      "kind": "fileLength",
+      "id": "short-test-files",
+      "include": ["crates/*/tests/**/*.rs"],
+      "maxLines": 1500,
+      "message": "Split this test file. A test file can have at most 1500 lines."
+    }
+  ]
+}

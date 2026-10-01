@@ -1,0 +1,13 @@
+class {{ Name }} {
+  {{* Friends | field("friend", "equal", true) }}
+public:
+  {{* Constructors | field("constructor", "equal", true) }}
+  {{* Destructors | field("destructor", "equal", true) }}
+  {{* Operators | field("operator", "equal", true) }}
+  {{* PureVirtuals | field("pure", "equal", true) }}
+  {{* PublicMembers }}
+protected:
+  {{* ProtectedMembers }}
+private:
+  {{* PrivateMembers }}
+};

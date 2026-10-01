@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "ts-class-name",
+      "template": ".ctmpl/class-name.ts.ctmpl",
+      "include": ["src/*-service.ts"],
+      "mode": "contains"
+    },
+    {
+      "id": "ts-interface-name",
+      "template": ".ctmpl/interface-name.ts.ctmpl",
+      "include": ["src/logger.ts"],
+      "mode": "contains"
+    },
+    {
+      "id": "cpp-class-name",
+      "template": ".ctmpl/class-name.hpp.ctmpl",
+      "include": ["include/**/*.hpp"],
+      "mode": "contains",
+      "scope": "descendants"
+    }
+  ]
+}

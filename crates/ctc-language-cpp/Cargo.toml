@@ -1,0 +1,11 @@
+[package]
+name = "ctc-language-cpp"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ctc-core = { path = "../ctc-core" }
+tree-sitter.workspace = true
+tree-sitter-cpp.workspace = true

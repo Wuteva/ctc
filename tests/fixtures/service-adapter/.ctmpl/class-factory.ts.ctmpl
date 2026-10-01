@@ -1,0 +1,21 @@
+{{* Imports | kind("ImportDeclaration") }}
+
+export interface {{ PublicName | suffix("Options") }} {
+  {{* OptionMembers }}
+}
+
+export interface {{ PublicName }} {
+  {{* PublicMembers }}
+}
+
+class {{ PublicName | suffix("Implementation") }}
+  implements {{ PublicName }} {
+  {{* ImplementationMembers }}
+}
+
+export const {{ PublicName | prefix("create") }} = (
+  {{* FactoryParameters }}
+): {{ PublicName }} =>
+  new {{ PublicName | suffix("Implementation") }}(
+    {{* ConstructorArguments }}
+  );

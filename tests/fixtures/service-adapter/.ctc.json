@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "no-value-imports",
+      "template": ".ctmpl/no-value-imports.ts.ctmpl",
+      "include": ["src/**/*.ts"],
+      "exclude": ["src/index.ts"],
+      "mode": "forbid"
+    },
+    {
+      "id": "class-factory",
+      "template": ".ctmpl/class-factory.ts.ctmpl",
+      "include": ["src/**/*.ts"],
+      "exclude": ["src/index.ts", "src/interfaces.ts"],
+      "mode": "exact"
+    }
+  ]
+}

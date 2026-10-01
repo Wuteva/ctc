@@ -1,0 +1,10 @@
+class {{ Name }} {
+  {{* Usings | kind("AliasDeclaration") }}
+public:
+  {{* Constructors | field("constructor", "equal", true) }}
+  {{* PublicMembers }}
+protected:
+  {{* ProtectedMembers }}
+private:
+  {{* PrivateMembers }}
+};
