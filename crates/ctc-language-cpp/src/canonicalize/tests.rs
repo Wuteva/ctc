@@ -154,3 +154,80 @@ fn empty_class_body_has_no_value() {
         .unwrap();
     assert_eq!(body.value, None);
 }
+
+#[test]
+fn class_body_members_inside_preprocessor_blocks_are_direct_members() {
+    let parsed = parse_source(
+        r#"
+class Widget {
+public:
+  void run();
+#ifdef WITH_EXTRA
+  void extra();
+#else
+  void fallback();
+#endif
+private:
+  int value_;
+};
+"#,
+        Path::new("source.h"),
+    )
+    .unwrap();
+    let class = parsed
+        .root
+        .children
+        .iter()
+        .find(|node| node.kind.as_ref() == "ClassDeclaration")
+        .unwrap();
+    let body = class
+        .children
+        .iter()
+        .find(|node| node.kind.as_ref() == "ClassBody")
+        .unwrap();
+    let kinds = body
+        .children
+        .iter()
+        .map(|node| node.kind.as_ref())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        kinds,
+        vec![
+            "FieldDeclaration",
+            "FieldDeclaration",
+            "FieldDeclaration",
+            "FieldDeclaration"
+        ]
+    );
+    let access = body
+        .children
+        .iter()
+        .map(|node| match node.fields.get("access") {
+            Some(ctc_core::canonical::CanonicalScalar::String(value)) => value.as_ref(),
+            _ => "",
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(access, vec!["public", "public", "public", "private"]);
+}
+
+#[test]
+fn macro_definitions_in_class_bodies_are_not_members() {
+    let parsed = parse_source(
+        "struct Table {\n#define FIELD(NAME) int NAME;\n  FIELDS(FIELD)\n#undef FIELD\n  int b;\n};\n",
+        Path::new("source.h"),
+    )
+    .unwrap();
+    let class = parsed
+        .root
+        .children
+        .iter()
+        .find(|node| node.kind.as_ref() == "StructDeclaration")
+        .unwrap();
+    let body = class
+        .children
+        .iter()
+        .find(|node| node.kind.as_ref() == "ClassBody")
+        .unwrap();
+    assert_eq!(body.children.len(), 1);
+    assert_eq!(body.children[0].kind.as_ref(), "FieldDeclaration");
+}

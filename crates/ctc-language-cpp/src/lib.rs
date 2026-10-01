@@ -3,6 +3,7 @@
 mod canonicalize;
 mod compiler;
 mod definitions;
+mod grammar_gaps;
 mod members;
 mod scanner;
 

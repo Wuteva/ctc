@@ -9,6 +9,7 @@ use tree_sitter::{Language, Node, Parser};
 
 use crate::{
     definitions::member_function_facts,
+    grammar_gaps::mask_grammar_gaps,
     members::{is_access_label, is_access_label_colon, member_fields},
 };
 
@@ -94,13 +95,14 @@ pub(crate) fn parse_tree(source: &str) -> Result<tree_sitter::Tree, String> {
 }
 
 fn normalize_parser_input(source: &str) -> Cow<'_, str> {
-    let Some(source_without_bom) = source.strip_prefix('\u{feff}') else {
-        return Cow::Borrowed(source);
+    let unmasked = match source.strip_prefix('\u{feff}') {
+        Some(source_without_bom) => Cow::Owned(format!("   {source_without_bom}")),
+        None => Cow::Borrowed(source),
     };
-    let mut normalized = String::with_capacity(source.len());
-    normalized.push_str("   ");
-    normalized.push_str(source_without_bom);
-    Cow::Owned(normalized)
+    match mask_grammar_gaps(&unmasked) {
+        Some(masked) => Cow::Owned(masked),
+        None => unmasked,
+    }
 }
 
 pub(crate) fn error_nodes(root: Node<'_>) -> Vec<Node<'_>> {
@@ -155,11 +157,17 @@ fn canonicalize_indexed(
     }
 
     let mut children = Vec::new();
+    let class_body = node.kind() == "field_declaration_list";
     for index in 0..node.child_count() {
-        if let Some(child) = node
-            .child(index)
-            .and_then(|child| canonicalize_indexed(child, source, lines))
-        {
+        let Some(child) = node.child(index) else {
+            continue;
+        };
+        if class_body && is_preproc_directive(child) {
+            continue;
+        }
+        if class_body && is_preproc_block(child) {
+            push_preproc_members(child, source, lines, &mut children);
+        } else if let Some(child) = canonicalize_indexed(child, source, lines) {
             children.push(child);
         }
     }
@@ -170,6 +178,47 @@ fn canonicalize_indexed(
         children,
         range: lines.range(node.start_byte(), node.end_byte()),
     })
+}
+
+fn is_preproc_block(node: Node<'_>) -> bool {
+    matches!(
+        node.kind(),
+        "preproc_if" | "preproc_ifdef" | "preproc_else" | "preproc_elif" | "preproc_elifdef"
+    )
+}
+
+/// `#define` and `#undef` lines in a class body are not members.
+fn is_preproc_directive(node: Node<'_>) -> bool {
+    matches!(
+        node.kind(),
+        "preproc_def" | "preproc_function_def" | "preproc_call"
+    )
+}
+
+/// Members inside `#if` blocks of a class body count as members of the class
+/// body, so member rules see them in source order. The condition is dropped.
+fn push_preproc_members(
+    block: Node<'_>,
+    source: &str,
+    lines: &LineIndex<'_>,
+    members: &mut Vec<CanonicalNode>,
+) {
+    let condition = block
+        .child_by_field_name("condition")
+        .or_else(|| block.child_by_field_name("name"));
+    for index in 0..block.child_count() {
+        let Some(child) = block.child(index) else {
+            continue;
+        };
+        if !child.is_named() || condition == Some(child) || is_preproc_directive(child) {
+            continue;
+        }
+        if is_preproc_block(child) {
+            push_preproc_members(child, source, lines, members);
+        } else if let Some(member) = canonicalize_indexed(child, source, lines) {
+            members.push(member);
+        }
+    }
 }
 
 pub(crate) fn canonical_kind(node: Node<'_>) -> String {
