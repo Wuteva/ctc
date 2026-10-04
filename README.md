@@ -1,8 +1,12 @@
 # Code Template Check
 
 Code Template Check (`ctc`) checks source files against code-shaped templates.
-It matches syntax trees, not formatted source text. Today it supports
-TypeScript, C++, and Rust in one native Rust executable.
+It matches syntax trees, not formatted source text. It supports TypeScript,
+C++, and Rust. Support for more languages can be added.
+
+`ctc` is made for coding agents. It finds code that does not follow your coding
+standards, and the agent then corrects that code. `ctc` is not a linter, but
+some of its rules can do the same checks as lint rules.
 
 See also:
 
