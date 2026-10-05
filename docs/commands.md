@@ -12,6 +12,7 @@ Related pages:
 - [TypeScript guide](languages/typescript.md)
 - [C++ guide](languages/cpp.md)
 - [Rust guide](languages/rust.md)
+- [Lua guide](languages/lua.md)
 
 ## Run checks
 

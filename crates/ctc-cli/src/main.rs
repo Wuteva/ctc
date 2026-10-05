@@ -16,6 +16,7 @@ use ctc_core::{
     diagnostic::TextRange,
 };
 use ctc_language_cpp::CppAdapter;
+use ctc_language_lua::LuaAdapter;
 use ctc_language_rust::RustAdapter;
 use ctc_language_typescript::TypeScriptAdapter;
 
@@ -272,6 +273,7 @@ fn main() -> ExitCode {
 
     let mut languages = LanguageRegistry::new();
     languages.register(Arc::new(CppAdapter::new()));
+    languages.register(Arc::new(LuaAdapter::new()));
     languages.register(Arc::new(RustAdapter::new()));
     languages.register(Arc::new(TypeScriptAdapter::new()));
     let engine = Engine::new(languages);

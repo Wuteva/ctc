@@ -11,6 +11,7 @@ Related pages:
 - [Command guide](../commands.md)
 - [TypeScript guide](typescript.md)
 - [Rust guide](rust.md)
+- [Lua guide](lua.md)
 
 ## File suffixes and template names
 

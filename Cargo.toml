@@ -3,6 +3,7 @@ members = [
   "crates/ctc-cli",
   "crates/ctc-core",
   "crates/ctc-language-cpp",
+  "crates/ctc-language-lua",
   "crates/ctc-language-rust",
   "crates/ctc-language-typescript",
 ]
@@ -22,6 +23,7 @@ serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 tree-sitter = "0.27"
 tree-sitter-cpp = "0.23.4"
+tree-sitter-lua = "0.5.0"
 tree-sitter-rust = "0.24"
 tree-sitter-typescript = "0.23.2"
 

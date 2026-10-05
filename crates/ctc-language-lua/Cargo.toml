@@ -1,0 +1,11 @@
+[package]
+name = "ctc-language-lua"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ctc-core = { path = "../ctc-core" }
+tree-sitter.workspace = true
+tree-sitter-lua.workspace = true

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "no-unrestricted-load",
+      "template": ".ctmpl/no-load.lua.ctmpl",
+      "include": ["packages/**/*.lua"],
+      "mode": "forbid",
+      "scope": "descendants"
+    },
+    {
+      "id": "module-shape",
+      "template": ".ctmpl/module-shape.lua.ctmpl",
+      "include": ["packages/**/*.lua"],
+      "mode": "exact"
+    },
+    {
+      "id": "short-functions",
+      "template": ".ctmpl/long-function.lua.ctmpl",
+      "include": ["packages/**/*.lua"],
+      "mode": "forbid",
+      "scope": "descendants"
+    },
+    {
+      "id": "package-requires",
+      "template": ".ctmpl/package-require.lua.ctmpl",
+      "include": ["packages/**/*.lua"],
+      "mode": "forbid",
+      "scope": "descendants"
+    }
+  ]
+}

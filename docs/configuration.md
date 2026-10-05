@@ -12,6 +12,7 @@ Related pages:
 - [TypeScript guide](languages/typescript.md)
 - [C++ guide](languages/cpp.md)
 - [Rust guide](languages/rust.md)
+- [Lua guide](languages/lua.md)
 
 ## Project layout
 
@@ -33,7 +34,7 @@ This split lets `.ctmpl\` be shared, even as a Git submodule, while each
 project keeps its own file selection in `.ctc.json`.
 
 Template filenames must include a supported source suffix before `.ctmpl`, such
-as `rule.ts.ctmpl`, `rule.hpp.ctmpl`, or `rule.rs.ctmpl`.
+as `rule.ts.ctmpl`, `rule.hpp.ctmpl`, `rule.rs.ctmpl`, or `rule.lua.ctmpl`.
 
 ## `.ctc.json` shape
 
@@ -291,7 +292,7 @@ Semantic rules live in `semanticRules`. They do not use template files.
 | `exceptionPolicy` | TypeScript | `try`, `throw`, `Promise.reject`, and configured exception sources | [TypeScript semantic rules](languages/typescript.md#semantic-rules) |
 | `companionFile` | Any supported language | Require a related file, such as a test | [C++ guide](languages/cpp.md#companion-files) |
 | `headerSourcePairing` | C++ | Check header declarations against source definitions | [C++ guide](languages/cpp.md#header-and-source-pairing) |
-| `fileLength` | Any supported language | Limit file size without parsing | [TypeScript](languages/typescript.md#file-length), [C++](languages/cpp.md#function-length), [Rust](languages/rust.md#file-length) |
+| `fileLength` | Any supported language | Limit file size without parsing | [TypeScript](languages/typescript.md#file-length), [C++](languages/cpp.md#function-length), [Rust](languages/rust.md#file-length), [Lua](languages/lua.md#file-length) |
 
 ### `companionFile`
 

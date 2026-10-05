@@ -8,8 +8,8 @@
 Code Template Check (`ctc`) checks source files against code-shaped templates.
 The templates contain placeholders that match syntax nodes.
 
-The tool supports TypeScript, C++, and Rust source files. All adapters use the
-same rule loading and matching system.
+The tool supports TypeScript, C++, Rust, and Lua source files. All adapters use
+the same rule loading and matching system.
 
 This document defines the required MVP behavior. The
 [implementation plan](plans/implementation-plan.md) describes the work order.
@@ -77,7 +77,8 @@ The release executable MUST be named `ctc`.
 
 The executable MUST run without Node.js or another language runtime.
 
-The executable MUST include the TypeScript, C++, and Rust Tree-sitter grammars.
+The executable MUST include the TypeScript, C++, Rust, and Lua Tree-sitter
+grammars.
 
 Each operating system and processor target CAN have a separate executable.
 
@@ -118,7 +119,7 @@ Each language adapter MUST own:
 - Identifier validation.
 - Parse diagnostics.
 
-The CLI MUST register the TypeScript, C++, and Rust adapters at startup.
+The CLI MUST register the TypeScript, C++, Rust, and Lua adapters at startup.
 
 ## 7. Language Adapter Contract
 
@@ -552,6 +553,14 @@ For C++, protected regions include:
 C++ preprocessor directives are source code. The adapter MUST scan their
 contents for placeholders.
 
+For Lua, protected regions include:
+
+- Line comments that start with `--`.
+- Long comments such as `--[[ ... ]]` and `--[==[ ... ]==]`.
+- Quoted strings with `"` or `'`.
+- Long strings such as `[[ ... ]]` and `[==[ ... ]==]`.
+- A first line that starts with `#`.
+
 A placeholder MUST stay on one line.
 
 An opening `{{` outside a protected region starts a placeholder.
@@ -902,7 +911,7 @@ An invalid operator or argument count MUST produce a template diagnostic.
 Call nodes have the field `callee`. It is the callee text with all white space
 and comments removed, such as `eval`, `window.eval`, or `std::system`. The
 TypeScript adapter sets it on `CallExpression` and `NewExpression` nodes, and
-the C++ adapter sets it on `CallExpression` nodes. Like the member fields, it
+the C++ and Lua adapters set it on `CallExpression` nodes. Like the member fields, it
 belongs to source nodes only. Template literals do not carry it, so a template
 such as `eval({{* Args }});` still matches by structure. Use it on a placeholder:
 
@@ -919,6 +928,8 @@ names, as a string:
   string, the decoded text of that string. A computed argument gives no field.
 - C++: on `#include` nodes, the included path without angle brackets or quotes.
 - Rust: on `use` declarations, the path text with white space removed.
+- Lua: on a `require` call whose first argument is a string literal, the
+  decoded text of that string.
 
 Like `callee`, `module` belongs to source nodes only. Template literals do not
 carry it, so a template such as `import {{ B }} from "jquery";` still matches by
@@ -1264,6 +1275,84 @@ in one signature are not supported.
 The adapter has no semantic facts. `companionFile` and `fileLength` work on
 `.rs` files. The other semantic kinds do not select them.
 
+### 29.4 Lua Adapter
+
+The Lua adapter MUST use the pinned `tree-sitter-lua` grammar. It selects files
+with the suffix `.lua` and templates with the suffix `.lua.ctmpl`. The adapter
+reads Lua 5.5 syntax, including `global` declarations, attributes before a name
+list, and named vararg parameters. `global` is a name outside a declaration, as
+in a Lua 5.5 build with `LUA_COMPAT_GLOBAL`.
+
+The adapter MUST report all Tree-sitter error and missing nodes as source parse
+errors. It MUST also report these forms as source parse errors, because the
+grammar accepts them and Lua does not:
+
+- A name with a character that is not an ASCII letter, digit, or `_`.
+- A number with a suffix such as `LL` or `i`, or a binary number.
+- A line break without a backslash in a quoted string.
+- A decimal escape above 255 or a `\u{...}` escape above `7FFFFFFF`.
+
+Before it parses a file, the adapter MUST replace a carriage return that
+follows a backslash in a quoted string with `z`. The grammar rejects this valid
+form. The replacement keeps the byte length, so node ranges and node text
+come from the original source.
+
+The adapter MUST NOT claim name resolution or the checks that `luac` does
+after it parses, such as assignments to `<const>` variables or to the control
+variable of a `for` loop.
+
+The kind registry uses the PascalCase form of the Tree-sitter node kind, with
+these fixed names:
+
+| Canonical kind | Tree-sitter node kinds |
+|---|---|
+| `SourceFile` | `chunk` |
+| `StatementBlock` | `block` |
+| `FunctionDeclaration` | `function_declaration` (all `function` statements) |
+| `FunctionExpression` | `function_definition` |
+| `CallExpression` | `function_call` |
+| `Identifier` | `identifier`, and the word `global` outside a declaration |
+| `StringLiteral` | `string` (one node with a value) |
+| `NumericLiteral` | `number` |
+
+Supertype kinds such as `statement` and `expression` are not in the registry.
+
+The canonical tree differs from the Tree-sitter tree in these ways:
+
+- A body that the grammar leaves out because it is empty, such as in
+  `function f() end`, is an empty `StatementBlock`. This applies to functions
+  and to the bodies of `do`, `while`, `repeat`, `for`, `if`, `elseif`, and
+  `else`.
+- The `assignment_statement` inside `local x = 1` or `global x = 1` is not a
+  node. Its children are children of the `VariableDeclaration`.
+- `empty_statement` nodes, comments, and the tokens `(`, `)`, `[`, `]`, `{`,
+  `}`, `,`, and `;` are dropped.
+- A string literal has its decoded text as its value. A string that does not
+  decode to UTF-8 keeps its source text.
+
+The adapter sets these fields on source nodes only. Template literals do not
+carry them:
+
+- `callee`: on `function_call`, the called text without white space or
+  comments, such as `string.format` or `self:emit`. A string literal in the
+  callee keeps its text.
+- `module`: see section 26.2.
+- `local`, `global`: Booleans on `variable_declaration`,
+  `implicit_variable_declaration`, and `function_declaration`. Each is `true`
+  when the declaration starts with that keyword.
+
+The adapter MUST expose `comment` ranges as comments for suppression comments.
+
+The adapter supports sequence placeholders in source-file statements, block
+statements, function parameters, call arguments, table constructor items,
+expression lists, and name lists. A placeholder alone on a line in a statement
+list is one statement. The optional keywords are `local` and `global`.
+
+The adapter has no semantic facts. `companionFile` and `fileLength` work on
+`.lua` files. The other semantic kinds do not select them.
+
+## 30. Literal Matching
+
 A literal template node MUST equal the corresponding canonical source node.
 
 Each canonical field on a literal template node MUST equal the same source
@@ -1589,7 +1678,9 @@ The matcher MUST NOT process a source tree that contains parser errors.
 ### 38.1 Suppression Comments
 
 A source comment can skip diagnostics of named rules. The same syntax applies
-to TypeScript, C++, and Rust sources:
+to TypeScript, C++, and Rust sources. Lua sources use Lua comments with the
+same text, such as `-- ctc-ignore-next-line <rule-id>` or
+`--[[ ctc-ignore-file <rule-id> ]]`:
 
 ```text
 // ctc-ignore-next-line <rule-id>[, <rule-id>]... [-- <reason>]
@@ -1603,8 +1694,8 @@ parser tree. Text inside string literals, template literals, or other
 non-comment tokens MUST NOT act as a suppression.
 
 To read a comment, the tool removes the comment delimiters, extra leading `/`
-characters of a line comment, leading `*` characters of a block comment, and
-surrounding white space. The comment is a suppression candidate when the first
+characters of a line comment, leading `*` characters of a block comment, extra
+leading `-` characters of a Lua line comment, and surrounding white space. The comment is a suppression candidate when the first
 word of the remaining text starts with `ctc-ignore`.
 
 The first word MUST be `ctc-ignore-next-line` or `ctc-ignore-file`.

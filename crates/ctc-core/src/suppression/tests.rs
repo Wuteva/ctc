@@ -190,6 +190,49 @@ fn invalid_comments_produce_diagnostics() {
     assert!(suppressions.suppresses(&diagnostic_at(source, "first", 6)));
 }
 
+/// Each line that starts with `--` is one whole comment.
+fn lua_comment_ranges(source: &str) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut start = 0;
+    for line in source.split_inclusive('\n') {
+        if line.starts_with("--") {
+            ranges.push(start..start + line.trim_end().len());
+        }
+        start += line.len();
+    }
+    ranges
+}
+
+#[test]
+fn lua_comments_carry_suppression_directives() {
+    let source = concat!(
+        "-- ctc-ignore-next-line first -- reason\n",
+        "local a = 1\n",
+        "--- ctc-ignore-next-line second\n",
+        "local b = 2\n",
+        "--[[ ctc-ignore-next-line third ]]\n",
+        "local c = 3\n",
+        "--[=[ ctc-ignore-file first ]=]\n",
+    );
+    let known = ["first", "second", "third"]
+        .into_iter()
+        .map(str::to_string)
+        .collect::<BTreeSet<_>>();
+    let suppressions = collect_suppressions(
+        Path::new("source.lua"),
+        source,
+        &lua_comment_ranges(source),
+        &known,
+        &known,
+    );
+    assert!(suppressions.diagnostics.is_empty());
+    assert_eq!(suppressions.directives.len(), 4);
+    assert!(suppressions.suppresses(&diagnostic_at(source, "second", 4)));
+    assert!(suppressions.suppresses(&diagnostic_at(source, "third", 6)));
+    assert!(!suppressions.suppresses(&diagnostic_at(source, "third", 4)));
+    assert!(suppressions.suppresses(&diagnostic_at(source, "first", 6)));
+}
+
 #[test]
 fn ordinary_comments_are_ignored() {
     let source = "// see ctc-ignore-file first\n// ctc: ignore\nconst a = 1;\n";

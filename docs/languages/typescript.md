@@ -12,6 +12,7 @@ Related pages:
 - [Command guide](../commands.md)
 - [C++ guide](cpp.md)
 - [Rust guide](rust.md)
+- [Lua guide](lua.md)
 
 ## File suffixes and template names
 

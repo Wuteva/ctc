@@ -2,7 +2,7 @@
 
 Code Template Check (`ctc`) checks source files against code-shaped templates.
 It matches syntax trees, not formatted source text. It supports TypeScript,
-C++, and Rust. Support for more languages can be added.
+C++, Rust, and Lua. Support for more languages can be added.
 
 `ctc` is made for coding agents. It finds code that does not follow your coding
 standards, and the agent then corrects that code. `ctc` is not a linter, but
@@ -16,6 +16,7 @@ See also:
 - [TypeScript guide](docs/languages/typescript.md)
 - [C++ guide](docs/languages/cpp.md)
 - [Rust guide](docs/languages/rust.md)
+- [Lua guide](docs/languages/lua.md)
 - [Specification](docs/specification.md)
 
 ## Build
@@ -147,6 +148,7 @@ The template suffix selects the language adapter.
 | `.ts`, `.mts`, `.cts` | `.ts.ctmpl`, `.mts.ctmpl`, `.cts.ctmpl` | [TypeScript](docs/languages/typescript.md) |
 | `.cpp`, `.cc`, `.cxx`, `.h`, `.hh`, `.hpp`, `.hxx` | matching C++ suffix before `.ctmpl` | [C++](docs/languages/cpp.md) |
 | `.rs` | `.rs.ctmpl` | [Rust](docs/languages/rust.md) |
+| `.lua` | `.lua.ctmpl` | [Lua](docs/languages/lua.md) |
 
 TypeScript declaration files and C files are not supported.
 
@@ -158,6 +160,7 @@ TypeScript declaration files and C files are not supported.
 - [docs/languages/typescript.md](docs/languages/typescript.md): TypeScript file suffixes, kinds, fields, semantic rules, limits, and verified recipes.
 - [docs/languages/cpp.md](docs/languages/cpp.md): C++ file suffixes, kinds, fields, cross-file rules, limits, and verified recipes.
 - [docs/languages/rust.md](docs/languages/rust.md): Rust file suffixes, kinds, fields, limits, and verified recipes based on this repo's rules.
+- [docs/languages/lua.md](docs/languages/lua.md): Lua 5.5 syntax support, file suffixes, kinds, fields, limits, and verified recipes.
 - [docs/specification.md](docs/specification.md): Full behavior and diagnostic reference.
 
 ## Check this repository

@@ -12,6 +12,7 @@ Related pages:
 - [Command guide](../commands.md)
 - [TypeScript guide](typescript.md)
 - [C++ guide](cpp.md)
+- [Lua guide](lua.md)
 
 ## File suffixes and template names
 

@@ -12,6 +12,7 @@ Related pages:
 - [TypeScript guide](languages/typescript.md)
 - [C++ guide](languages/cpp.md)
 - [Rust guide](languages/rust.md)
+- [Lua guide](languages/lua.md)
 
 ## Placeholder basics
 
@@ -152,12 +153,14 @@ The expression is not anchored by default here either.
 Imports and includes have `module`. It holds the module name or the included
 file, without quotes or angle brackets. In TypeScript it is also set on
 `require(...)` and `import(...)` calls with a plain string argument. In Rust it is
-the path of a `use` declaration, such as `std::fs`. See the language pages for
+the path of a `use` declaration, such as `std::fs`. In Lua it is the string
+argument of a `require` call, such as `game.parts`. See the language pages for
 recipes.
 
 ```text
 {{ Import | field("module", "matches", "^(node:)?fs(/promises)?$") }}
-```n
+```
+
 ## String literals in templates
 
 Text that looks like a placeholder inside a string literal is treated as plain
@@ -180,6 +183,12 @@ Rust:
 
 ```rust
 #![forbid(unsafe_code)]
+```
+
+Lua:
+
+```lua
+local Parts = require("game.parts")
 ```
 
 When several literal forms are allowed, use several template files in one rule.
@@ -208,4 +217,12 @@ Ban `unwrap()` calls:
 
 ```rust
 {{ Call | kind("CallExpression") | field("callee", "equal", "unwrap") }}
+```
+
+### Lua
+
+Ban `load` and `dofile` calls:
+
+```lua
+{{ Call | kind("CallExpression") | field("callee", "matches", "^(load|dofile)$") }}
 ```

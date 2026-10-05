@@ -1,0 +1,1 @@
+{{ Long | kind("FunctionDeclaration", "FunctionExpression") | field("lineCount", "greaterThan", 12) }}

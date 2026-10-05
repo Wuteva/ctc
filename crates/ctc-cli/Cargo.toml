@@ -13,6 +13,7 @@ path = "src/main.rs"
 clap.workspace = true
 ctc-core = { path = "../ctc-core" }
 ctc-language-cpp = { path = "../ctc-language-cpp" }
+ctc-language-lua = { path = "../ctc-language-lua" }
 ctc-language-rust = { path = "../ctc-language-rust" }
 ctc-language-typescript = { path = "../ctc-language-typescript" }
 serde_json.workspace = true

@@ -209,9 +209,32 @@ fn comment_body(text: &str) -> Option<&str> {
     if let Some(body) = text.strip_prefix("//") {
         return Some(body.trim_start_matches('/').trim());
     }
+    if let Some(body) = text.strip_prefix("--") {
+        return Some(
+            lua_long_comment_body(body).unwrap_or_else(|| body.trim_start_matches('-').trim()),
+        );
+    }
     let body = text.strip_prefix("/*")?;
     let body = body.strip_suffix("*/").unwrap_or(body);
     Some(body.trim().trim_start_matches('*').trim())
+}
+
+/// The text inside a Lua long comment such as `--[[ ... ]]` or
+/// `--[==[ ... ]==]`, given the text after `--`.
+fn lua_long_comment_body(body: &str) -> Option<&str> {
+    let level = body
+        .strip_prefix('[')?
+        .bytes()
+        .take_while(|byte| *byte == b'=')
+        .count();
+    let equals = "=".repeat(level);
+    let inner = body.strip_prefix(format!("[{equals}[").as_str())?;
+    Some(
+        inner
+            .strip_suffix(format!("]{equals}]").as_str())
+            .unwrap_or(inner)
+            .trim(),
+    )
 }
 
 /// Removes the optional reason that follows a ` -- ` separator.

@@ -1,0 +1,1 @@
+{{ Call | kind("CallExpression") | field("callee", "matches", "^((_G|_ENV)[.])?(load|loadstring|loadfile|dofile)$") }}
