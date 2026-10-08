@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use globset::GlobSet;
 use serde::Deserialize;
@@ -7,6 +7,11 @@ use crate::{
     canonical::{ExceptionKind, MemberFunctionFact, MemberFunctionRole, SemanticFacts},
     diagnostic::{Diagnostic, DiagnosticCategory, TextRange},
 };
+
+mod globals;
+
+pub use globals::DEFAULT_RESTRICTED_GLOBALS;
+use globals::{evaluate_accidental_globals, evaluate_restricted_globals};
 
 #[derive(Clone)]
 pub enum SemanticRule {
@@ -26,6 +31,14 @@ pub enum SemanticRule {
     HeaderSourcePairing {
         missing_source: MissingPartner,
         check_order: bool,
+    },
+    AccidentalGlobals {
+        allow: BTreeSet<String>,
+        allow_write: BTreeSet<String>,
+    },
+    RestrictedGlobals {
+        forbid: Vec<String>,
+        forbid_dynamic_require: bool,
     },
 }
 
@@ -58,6 +71,13 @@ pub fn evaluate_semantic_rule(
             exception_sources,
             facts,
         ),
+        SemanticRule::AccidentalGlobals { allow, allow_write } => {
+            evaluate_accidental_globals(rule_id, allow, allow_write, facts)
+        }
+        SemanticRule::RestrictedGlobals {
+            forbid,
+            forbid_dynamic_require,
+        } => evaluate_restricted_globals(rule_id, forbid, *forbid_dynamic_require, facts),
         SemanticRule::CompanionFile
         | SemanticRule::FileLength { .. }
         | SemanticRule::HeaderSourcePairing { .. } => Vec::new(),

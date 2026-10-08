@@ -9,6 +9,7 @@ use tree_sitter::{Language, Node, Parser};
 
 use crate::{
     fields::{canonical_fields, is_declaration_keyword},
+    globals::extract_globals,
     grammar_gaps::{lexical_errors, mask_grammar_gaps},
     strings::decode_string,
 };
@@ -46,7 +47,10 @@ pub fn parse_source(source: &str, path: &Path) -> Result<ParsedSource, Vec<Diagn
         language_id: "lua",
         source: source.to_string(),
         root,
-        semantic_facts: SemanticFacts::default(),
+        semantic_facts: SemanticFacts {
+            globals: extract_globals(tree.root_node(), source, &lines),
+            ..SemanticFacts::default()
+        },
         comments: comment_ranges(tree.root_node()),
     })
 }

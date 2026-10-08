@@ -293,6 +293,8 @@ Semantic rules live in `semanticRules`. They do not use template files.
 | `companionFile` | Any supported language | Require a related file, such as a test | [C++ guide](languages/cpp.md#companion-files) |
 | `headerSourcePairing` | C++ | Check header declarations against source definitions | [C++ guide](languages/cpp.md#header-and-source-pairing) |
 | `fileLength` | Any supported language | Limit file size without parsing | [TypeScript](languages/typescript.md#file-length), [C++](languages/cpp.md#function-length), [Rust](languages/rust.md#file-length), [Lua](languages/lua.md#file-length) |
+| `accidentalGlobals` | Lua | Reads and assignments of global variables that the project did not allow | [Lua guide](languages/lua.md#accidental-globals) |
+| `restrictedGlobals` | Lua | Uses of functions that load code or reach the host | [Lua guide](languages/lua.md#unrestricted-loading) |
 
 ### `companionFile`
 
@@ -316,6 +318,45 @@ Semantic rules live in `semanticRules`. They do not use template files.
   "maxLines": 800
 }
 ```
+
+### `accidentalGlobals`
+
+Lua only. The rule resolves names and reports each use of a global variable
+that the rule does not allow.
+
+```json
+{
+  "kind": "accidentalGlobals",
+  "id": "no-accidental-globals",
+  "include": ["packages/**/*.lua"],
+  "allow": ["ipairs", "math", "pairs", "string", "table"],
+  "allowWrite": []
+}
+```
+
+`allow` lists the global names that the code can read. `allowWrite` lists the
+global names that the code can assign. Both default to an empty list. A name has
+ASCII letters, digits, and `_`.
+
+### `restrictedGlobals`
+
+Lua only. The rule reports the uses of names that load code or reach the host.
+
+```json
+{
+  "kind": "restrictedGlobals",
+  "id": "no-unrestricted-loading",
+  "include": ["packages/**/*.lua"],
+  "forbid": ["load", "dofile", "debug", "io", "os", "package", "string.dump"],
+  "forbidDynamicRequire": true
+}
+```
+
+`forbid` lists names and dotted paths. A name forbids itself and every name
+below it. When `forbid` is missing, the rule uses a default list. See the
+[Lua guide](languages/lua.md#unrestricted-loading). `forbidDynamicRequire`
+defaults to `true`. It reports each `require` that does not pass one string
+literal.
 
 ### `headerSourcePairing`
 

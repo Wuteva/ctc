@@ -137,8 +137,10 @@ src/order.service.ts:3:14 [service-shape] Capture `Name` must match the file nam
 The exit code is `1` when a rule fails. Other things you can do with templates:
 forbid a structure (such as `try` blocks, `eval` calls, or raw pointers), check
 the order of class members, require a matching header and source file, and limit
-function or file sizes. See [docs/commands.md](docs/commands.md) for command
-options and exit codes.
+function or file sizes. For Lua projects, two semantic rules find accidental
+global variables and unrestricted code loading. See
+[docs/commands.md](docs/commands.md) for command options and exit codes.
+
 ## Supported languages
 
 The template suffix selects the language adapter.
@@ -160,7 +162,7 @@ TypeScript declaration files and C files are not supported.
 - [docs/languages/typescript.md](docs/languages/typescript.md): TypeScript file suffixes, kinds, fields, semantic rules, limits, and verified recipes.
 - [docs/languages/cpp.md](docs/languages/cpp.md): C++ file suffixes, kinds, fields, cross-file rules, limits, and verified recipes.
 - [docs/languages/rust.md](docs/languages/rust.md): Rust file suffixes, kinds, fields, limits, and verified recipes based on this repo's rules.
-- [docs/languages/lua.md](docs/languages/lua.md): Lua 5.5 syntax support, file suffixes, kinds, fields, limits, and verified recipes.
+- [docs/languages/lua.md](docs/languages/lua.md): Lua 5.5 syntax support, file suffixes, kinds, fields, Lua project rules (global variables, unrestricted loading, module structure, function size), limits, and verified recipes.
 - [docs/specification.md](docs/specification.md): Full behavior and diagnostic reference.
 
 ## Check this repository

@@ -154,7 +154,7 @@ Imports and includes have `module`. It holds the module name or the included
 file, without quotes or angle brackets. In TypeScript it is also set on
 `require(...)` and `import(...)` calls with a plain string argument. In Rust it is
 the path of a `use` declaration, such as `std::fs`. In Lua it is the string
-argument of a `require` call, such as `game.parts`. See the language pages for
+argument of a `require` call, such as `app.parts`. See the language pages for
 recipes.
 
 ```text
@@ -188,7 +188,7 @@ Rust:
 Lua:
 
 ```lua
-local Parts = require("game.parts")
+local Parts = require("app.parts")
 ```
 
 When several literal forms are allowed, use several template files in one rule.

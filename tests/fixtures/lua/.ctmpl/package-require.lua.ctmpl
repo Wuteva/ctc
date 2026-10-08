@@ -1,1 +1,1 @@
-{{ Call | field("callee", "equal", "require") | field("module", "notMatches", "^game\\.") }}
+{{ Call | field("callee", "equal", "require") | field("module", "notMatches", "^app\\.") }}

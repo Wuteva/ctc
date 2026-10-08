@@ -312,13 +312,16 @@ Semantic rules do not use templates. The supported semantic kinds are:
 - `companionFile`
 - `headerSourcePairing`
 - `fileLength`
+- `accidentalGlobals`
+- `restrictedGlobals`
 
 All kinds require `id` and `include`. `exclude`, `message`, and `allowIgnore` are optional.
 `message` follows section 11.1.
 
 `returnPaths` and `exceptionPolicy` select TypeScript files only.
 `companionFile` selects any supported source file. `headerSourcePairing`
-selects C++ files only. A configured kind whose language adapter is not
+selects C++ files only. `accidentalGlobals` and `restrictedGlobals` select Lua
+files only. A configured kind whose language adapter is not
 registered MUST produce an invalid-configuration diagnostic.
 
 `returnPaths` requires `typeName`, a non-empty string. A rule without it MUST produce an
@@ -344,6 +347,22 @@ over the limit. The diagnostic carries `at most <n> lines` as expected and
 `<n> lines` as actual. Because the file is not parsed, suppression comments do
 not apply to a `fileLength` rule. `maxLines` of `0` MUST produce an
 invalid-configuration diagnostic.
+
+`accidentalGlobals` accepts:
+
+- `allow`: an array of global names. It defaults to an empty array.
+- `allowWrite`: an array of global names. It defaults to an empty array.
+
+`restrictedGlobals` accepts:
+
+- `forbid`: an array of global names and dotted paths. When it is missing, the
+  rule MUST use the default list of section 34.7.
+- `forbidDynamicRequire`: a Boolean. It defaults to `true`.
+
+A global name consists of ASCII letters, digits, and `_`, and it MUST NOT start
+with a digit. A dotted path consists of global names that dots separate. An
+entry that does not follow these forms MUST produce an invalid-configuration
+diagnostic. The Lua semantic kinds do not accept the fields of other kinds.
 
 `headerSourcePairing` requires `sources`, a non-empty array of partner
 patterns. It accepts:
@@ -391,6 +410,8 @@ The MVP mappings are:
 | `.hh.ctmpl` | C++ |
 | `.hpp.ctmpl` | C++ |
 | `.hxx.ctmpl` | C++ |
+| `.rs.ctmpl` | Rust |
+| `.lua.ctmpl` | Lua |
 
 Selected source files MUST use the same language adapter as their template.
 
@@ -1348,8 +1369,63 @@ statements, function parameters, call arguments, table constructor items,
 expression lists, and name lists. A placeholder alone on a line in a statement
 list is one statement. The optional keywords are `local` and `global`.
 
-The adapter has no semantic facts. `companionFile` and `fileLength` work on
-`.lua` files. The other semantic kinds do not select them.
+The adapter extracts global facts (section 29.5). `companionFile` and
+`fileLength` work on `.lua` files. `accidentalGlobals` and `restrictedGlobals`
+select only `.lua` files. The other semantic kinds do not select them.
+
+### 29.5 Lua Global Facts
+
+The Lua adapter MUST extract global facts during the same parse that creates
+canonical syntax nodes. A global fact describes one use of a name that no
+declaration binds.
+
+The adapter MUST follow the scoping rules of Lua. These constructs bind a name:
+
+- `local` variables and `local function`. The name of `local function` is bound
+  in the function body. A name in `local x = x` is bound after the statement.
+- Function parameters, `self` in a method declared with `:`, and the name after
+  `...`.
+- The variables of numeric and generic `for` statements. They are bound in the
+  body.
+- `global` declarations of Lua 5.5, including `global function`. A name that a
+  declaration binds is not a global fact.
+- `global *` and `global<const> *`. They bind every name that no other
+  declaration binds, in the block of the declaration.
+
+A binding starts after the declaration and ends with the block. The condition
+of `repeat ... until` is in the scope of the body. A local named `_ENV`
+replaces the global table. The adapter MUST NOT produce global facts in the
+scope of a local `_ENV`.
+
+A name that no binding covers is a global variable. The adapter MUST produce one
+fact for each use. A fact has these parts:
+
+- The kind: read, write, dynamic read, or dynamic write.
+- The name, such as `os`.
+- The path: the name followed by the string keys that follow it, such as
+  `os.time`. A key is a string key in `a.b` and in `a["b"]`. The path ends at
+  the first key that is not a string literal, and the fact records that the key
+  is dynamic.
+- Whether the code reached the name with `_G` or `_ENV`.
+- The call shape: not called, called with one string literal argument, or
+  called with other arguments. This applies when the path is the callee of a
+  call.
+- The source range, from the start of the name to the end of the last key of
+  the path.
+
+A read fact applies to the use of a value, also when code reaches a field below
+the name. An assignment to a plain name, and `function name() end`, are write
+facts. An assignment to a field, such as `package.path = "x"`, is a read fact
+with the path `package.path`.
+
+`_G.name` and `_ENV.name` produce facts for the global `name`, with the table
+flag set. Other uses of `_G` and `_ENV` are facts for the names `_G` and
+`_ENV`. `_G[key]` with a key that is not a string literal produces a dynamic
+read, or a dynamic write when it is the target of an assignment. A local named
+`_G` is an ordinary variable.
+
+The adapter MUST NOT claim type inference or the resolution of names that
+come from `require`.
 
 ## 30. Literal Matching
 
@@ -1597,6 +1673,45 @@ header declaration and the neighbor it should follow or precede. The expected
 and actual values MUST give the header position and the source position among
 the matched definitions.
 
+### 34.7 Lua Global Rules
+
+The rules of this section read the global facts of section 29.5.
+
+`accidentalGlobals` MUST report:
+
+- `CTC4401` for each read fact whose name is not in `allow`.
+- `CTC4402` for each write fact whose name is not in `allowWrite`, and for each
+  dynamic write fact.
+
+A dynamic read fact produces no diagnostic from this rule. Each diagnostic is
+attached to the source range of the fact. The message names the global, with
+`_G.` before the name when the code reached it with `_G` or `_ENV`.
+
+`restrictedGlobals` MUST test each read fact and write fact against the entries
+of `forbid` in the configured order. The first entry that applies decides. An
+entry applies when:
+
+- the path of the fact is the entry or is below it (the path starts with the
+  entry and a dot), or
+- the entry is below the path, and the code uses the path as a value (the path
+  is not the callee of a call) or the next key is not a string literal. Then
+  the value can reach the entry.
+
+An entry that applies MUST produce `CTC4403`. When the configuration has no
+`forbid`, the default list is: `load`, `loadfile`, `loadstring`, `dofile`,
+`setfenv`, `collectgarbage`, `string.dump`, `debug`, `io`, `os`, and `package`.
+An empty list turns the name check off.
+
+When `forbidDynamicRequire` is `true` and no entry applied, the rule MUST
+produce `CTC4404` for each read fact with the path `require` whose call shape
+is not one string literal. This includes `require` as a value.
+
+The rule MUST produce `CTC4405` for each dynamic read fact and dynamic write
+fact, also when `forbidDynamicRequire` is `false` and `forbid` is empty.
+
+All diagnostics have exit class `1`. Both rules honor suppression comments
+(section 38.1) when the rule sets `allowIgnore` to `true`.
+
 ## 35. Failure Selection
 
 Exact and failed contains rules report one primary mismatch.
@@ -1822,6 +1937,11 @@ The MVP defines these codes:
 | `CTC4102` | Forbidden throw statement |
 | `CTC4103` | Promise rejection |
 | `CTC4104` | Configured exception-source call |
+| `CTC4401` | Read of a global variable that the rule does not allow |
+| `CTC4402` | Assignment to a global variable that the rule does not allow |
+| `CTC4403` | Use of a restricted global name |
+| `CTC4404` | `require` without one string literal as its argument |
+| `CTC4405` | `_G` or `_ENV` indexed with a key that is not a string literal |
 | `CTC4201` | Missing partner file |
 | `CTC4202` | Missing member function definition |
 | `CTC4203` | Member function definition out of order |

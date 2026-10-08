@@ -179,6 +179,34 @@ pub(super) enum SemanticRuleConfig {
         #[serde(default)]
         allow_ignore: bool,
     },
+    AccidentalGlobals {
+        id: String,
+        include: Vec<String>,
+        #[serde(default)]
+        exclude: Vec<String>,
+        #[serde(default)]
+        allow: Vec<String>,
+        #[serde(default)]
+        allow_write: Vec<String>,
+        #[serde(default)]
+        message: Option<String>,
+        #[serde(default)]
+        allow_ignore: bool,
+    },
+    RestrictedGlobals {
+        id: String,
+        include: Vec<String>,
+        #[serde(default)]
+        exclude: Vec<String>,
+        #[serde(default)]
+        forbid: Option<Vec<String>>,
+        #[serde(default = "default_true")]
+        forbid_dynamic_require: bool,
+        #[serde(default)]
+        message: Option<String>,
+        #[serde(default)]
+        allow_ignore: bool,
+    },
 }
 
 impl SemanticRuleConfig {
@@ -188,7 +216,9 @@ impl SemanticRuleConfig {
             | Self::ExceptionPolicy { id, .. }
             | Self::CompanionFile { id, .. }
             | Self::FileLength { id, .. }
-            | Self::HeaderSourcePairing { id, .. } => id,
+            | Self::HeaderSourcePairing { id, .. }
+            | Self::AccidentalGlobals { id, .. }
+            | Self::RestrictedGlobals { id, .. } => id,
         }
     }
 
@@ -198,7 +228,9 @@ impl SemanticRuleConfig {
             | Self::ExceptionPolicy { include, .. }
             | Self::CompanionFile { include, .. }
             | Self::FileLength { include, .. }
-            | Self::HeaderSourcePairing { include, .. } => include,
+            | Self::HeaderSourcePairing { include, .. }
+            | Self::AccidentalGlobals { include, .. }
+            | Self::RestrictedGlobals { include, .. } => include,
         }
     }
 
@@ -208,7 +240,9 @@ impl SemanticRuleConfig {
             | Self::ExceptionPolicy { exclude, .. }
             | Self::CompanionFile { exclude, .. }
             | Self::FileLength { exclude, .. }
-            | Self::HeaderSourcePairing { exclude, .. } => exclude,
+            | Self::HeaderSourcePairing { exclude, .. }
+            | Self::AccidentalGlobals { exclude, .. }
+            | Self::RestrictedGlobals { exclude, .. } => exclude,
         }
     }
 
@@ -217,6 +251,7 @@ impl SemanticRuleConfig {
         match self {
             Self::ReturnPaths { .. } | Self::ExceptionPolicy { .. } => Some("typescript"),
             Self::HeaderSourcePairing { .. } => Some("cpp"),
+            Self::AccidentalGlobals { .. } | Self::RestrictedGlobals { .. } => Some("lua"),
             Self::CompanionFile { .. } | Self::FileLength { .. } => None,
         }
     }
@@ -225,9 +260,11 @@ impl SemanticRuleConfig {
         match self {
             Self::CompanionFile { companions, .. } => Some(("companions", companions)),
             Self::HeaderSourcePairing { sources, .. } => Some(("sources", sources)),
-            Self::ReturnPaths { .. } | Self::ExceptionPolicy { .. } | Self::FileLength { .. } => {
-                None
-            }
+            Self::ReturnPaths { .. }
+            | Self::ExceptionPolicy { .. }
+            | Self::FileLength { .. }
+            | Self::AccidentalGlobals { .. }
+            | Self::RestrictedGlobals { .. } => None,
         }
     }
 
@@ -237,7 +274,9 @@ impl SemanticRuleConfig {
             | Self::ExceptionPolicy { message, .. }
             | Self::CompanionFile { message, .. }
             | Self::FileLength { message, .. }
-            | Self::HeaderSourcePairing { message, .. } => message.as_ref(),
+            | Self::HeaderSourcePairing { message, .. }
+            | Self::AccidentalGlobals { message, .. }
+            | Self::RestrictedGlobals { message, .. } => message.as_ref(),
         }
     }
 
@@ -247,7 +286,9 @@ impl SemanticRuleConfig {
             | Self::ExceptionPolicy { allow_ignore, .. }
             | Self::CompanionFile { allow_ignore, .. }
             | Self::FileLength { allow_ignore, .. }
-            | Self::HeaderSourcePairing { allow_ignore, .. } => *allow_ignore,
+            | Self::HeaderSourcePairing { allow_ignore, .. }
+            | Self::AccidentalGlobals { allow_ignore, .. }
+            | Self::RestrictedGlobals { allow_ignore, .. } => *allow_ignore,
         }
     }
 }

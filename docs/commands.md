@@ -177,6 +177,16 @@ These codes come from [Section 41 of the specification](specification.md#41-diag
 | `CTC4103` | Promise rejection |
 | `CTC4104` | Configured exception-source call |
 
+### Lua semantic rules
+
+| Code | Meaning |
+|---|---|
+| `CTC4401` | Read of a global variable that the rule does not allow |
+| `CTC4402` | Assignment to a global variable that the rule does not allow |
+| `CTC4403` | Use of a restricted global name |
+| `CTC4404` | `require` without one string literal as its argument |
+| `CTC4405` | `_G` or `_ENV` indexed with a key that is not a string literal |
+
 ### Cross-file and size rules
 
 | Code | Meaning |

@@ -1,8 +1,12 @@
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
-use crate::{diagnostic::Diagnostic, language::LanguageRegistry, semantic::SemanticRule};
+use crate::{
+    diagnostic::Diagnostic,
+    language::LanguageRegistry,
+    semantic::{DEFAULT_RESTRICTED_GLOBALS, SemanticRule},
+};
 
 use super::{
     config::{ProjectConfig, SemanticRuleConfig},
@@ -174,6 +178,93 @@ fn build_semantic_rule(
             missing_source: *missing_source,
             check_order: *check_order,
         }),
+        SemanticRuleConfig::AccidentalGlobals {
+            allow, allow_write, ..
+        } => Ok(SemanticRule::AccidentalGlobals {
+            allow: lua_names(allow, "allow", config_rule.id(), config_display_path)?,
+            allow_write: lua_names(
+                allow_write,
+                "allowWrite",
+                config_rule.id(),
+                config_display_path,
+            )?,
+        }),
+        SemanticRuleConfig::RestrictedGlobals {
+            forbid,
+            forbid_dynamic_require,
+            ..
+        } => {
+            let forbid = match forbid {
+                Some(paths) => lua_paths(paths, config_rule.id(), config_display_path)?,
+                None => DEFAULT_RESTRICTED_GLOBALS
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
+            };
+            Ok(SemanticRule::RestrictedGlobals {
+                forbid,
+                forbid_dynamic_require: *forbid_dynamic_require,
+            })
+        }
+    }
+}
+
+/// A Lua name: ASCII letters, digits, and `_`, not starting with a digit.
+fn is_lua_name(value: &str) -> bool {
+    let mut characters = value.chars();
+    characters
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic() || first == '_')
+        && characters.all(|character| character.is_ascii_alphanumeric() || character == '_')
+}
+
+fn lua_names(
+    names: &[String],
+    field: &str,
+    rule_id: &str,
+    config_display_path: &Path,
+) -> Result<BTreeSet<String>, Vec<Diagnostic>> {
+    let invalid = names
+        .iter()
+        .filter(|name| !is_lua_name(name))
+        .map(|name| {
+            config_error(
+                config_display_path,
+                format!(
+                    "Semantic rule `{rule_id}` has the invalid Lua name `{name}` in `{field}`."
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    if invalid.is_empty() {
+        Ok(names.iter().cloned().collect())
+    } else {
+        Err(invalid)
+    }
+}
+
+/// Names that are joined with dots, such as `string.dump`.
+fn lua_paths(
+    paths: &[String],
+    rule_id: &str,
+    config_display_path: &Path,
+) -> Result<Vec<String>, Vec<Diagnostic>> {
+    let invalid = paths
+        .iter()
+        .filter(|path| !path.split('.').all(is_lua_name))
+        .map(|path| {
+            config_error(
+                config_display_path,
+                format!(
+                    "Semantic rule `{rule_id}` has the invalid Lua name path `{path}` in `forbid`."
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    if invalid.is_empty() {
+        Ok(paths.to_vec())
+    } else {
+        Err(invalid)
     }
 }
 

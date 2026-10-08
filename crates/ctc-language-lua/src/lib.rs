@@ -3,6 +3,7 @@
 mod canonicalize;
 mod compiler;
 mod fields;
+mod globals;
 mod grammar_gaps;
 mod lexer;
 mod scanner;

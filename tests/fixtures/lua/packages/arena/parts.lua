@@ -1,7 +1,7 @@
 -- Parts of the arena robots. This file follows every rule.
 local Parts = {}
 
-local Shapes = require("game.shapes")
+local Shapes = require("app.shapes")
 
 local function total(...values)
   local sum = 0

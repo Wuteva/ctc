@@ -144,7 +144,7 @@ fn marks_local_and_global_declarations() {
 #[test]
 fn sets_callee_and_module_on_calls() {
     let root = parse(
-        "require(\"game.parts\")\nrequire 'game.bots'\nrequire [[game.rules]]\nrequire(name)\nstring.format(\"%d\", 1)\nself:emit(1)\n_G[\"load\"](\"x\")\n",
+        "require(\"app.parts\")\nrequire 'app.bots'\nrequire [[app.rules]]\nrequire(name)\nstring.format(\"%d\", 1)\nself:emit(1)\n_G[\"load\"](\"x\")\n",
     );
     let calls = find(&root, "CallExpression");
     let callees = calls
@@ -170,9 +170,9 @@ fn sets_callee_and_module_on_calls() {
     assert_eq!(
         modules,
         vec![
-            text("game.parts"),
-            text("game.bots"),
-            text("game.rules"),
+            text("app.parts"),
+            text("app.bots"),
+            text("app.rules"),
             None,
             None,
             None,

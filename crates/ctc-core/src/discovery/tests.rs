@@ -664,3 +664,125 @@ fn symbolic_link_partner_is_ignored() {
     let result = discover_all(directory.path(), None, &[], &[], &registry()).unwrap();
     assert_eq!(result.semantic_rules[0].partner, None);
 }
+
+struct LuaLanguage;
+
+impl LanguageAdapter for LuaLanguage {
+    fn id(&self) -> &'static str {
+        "lua"
+    }
+
+    fn supports_path(&self, path: &Path) -> bool {
+        path.extension().is_some_and(|extension| extension == "lua")
+    }
+
+    fn supports_selector_suffix(&self, suffix: &str) -> bool {
+        suffix.ends_with(".lua")
+    }
+}
+
+fn lua_registry() -> LanguageRegistry {
+    let mut registry = registry();
+    registry.register(Arc::new(LuaLanguage));
+    registry
+}
+
+fn globals_fixture(rules: &str) -> TempDir {
+    let directory = tempfile::tempdir().unwrap();
+    write(
+        directory.path(),
+        ".ctc.json",
+        &format!("{{\"schemaVersion\": 1, \"semanticRules\": [{rules}]}}"),
+    );
+    write(directory.path(), "scripts/a.lua", "return {}");
+    write(directory.path(), "scripts/b.ts", "export {};");
+    directory
+}
+
+#[test]
+fn global_rules_select_lua_files_only() {
+    let directory = globals_fixture(
+        r#"{"kind": "accidentalGlobals", "id": "globals", "include": ["scripts/**"],
+            "allow": ["print", "math"], "allowWrite": ["score"]},
+           {"kind": "restrictedGlobals", "id": "loading", "include": ["scripts/**"]}"#,
+    );
+    let result = discover_all(directory.path(), None, &[], &[], &lua_registry()).unwrap();
+    let selected = result
+        .semantic_rules
+        .iter()
+        .map(|rule| format!("{} {}", rule.id, rule.source_display_path.display()))
+        .collect::<Vec<_>>();
+    assert_eq!(selected, ["globals scripts/a.lua", "loading scripts/a.lua"]);
+}
+
+fn restricted(result: &DiscoveryResult, id: &str) -> (Vec<String>, bool) {
+    let application = result
+        .semantic_rules
+        .iter()
+        .find(|application| application.id == id)
+        .unwrap();
+    match &application.rule {
+        SemanticRule::RestrictedGlobals {
+            forbid,
+            forbid_dynamic_require,
+        } => (forbid.clone(), *forbid_dynamic_require),
+        _ => (Vec::new(), false),
+    }
+}
+
+#[test]
+fn restricted_globals_use_the_default_list_without_a_forbid_field() {
+    let directory = globals_fixture(
+        r#"{"kind": "restrictedGlobals", "id": "loading", "include": ["scripts/**"]},
+           {"kind": "restrictedGlobals", "id": "custom", "include": ["scripts/**"],
+            "forbid": ["os.execute"], "forbidDynamicRequire": false},
+           {"kind": "restrictedGlobals", "id": "none", "include": ["scripts/**"], "forbid": []}"#,
+    );
+    let result = discover_all(directory.path(), None, &[], &[], &lua_registry()).unwrap();
+    let (forbid, dynamic_require) = restricted(&result, "loading");
+    assert!(forbid.contains(&"string.dump".to_string()));
+    assert!(forbid.contains(&"debug".to_string()));
+    assert!(dynamic_require);
+    assert_eq!(
+        restricted(&result, "custom"),
+        (vec!["os.execute".to_string()], false)
+    );
+    assert_eq!(restricted(&result, "none"), (Vec::new(), true));
+}
+
+#[test]
+fn global_rules_refuse_names_that_are_not_lua_names() {
+    for (rules, expected) in [
+        (
+            r#"{"kind": "accidentalGlobals", "id": "globals", "include": ["scripts/**"], "allow": ["a-b"]}"#,
+            "invalid Lua name `a-b` in `allow`",
+        ),
+        (
+            r#"{"kind": "accidentalGlobals", "id": "globals", "include": ["scripts/**"], "allowWrite": ["1x"]}"#,
+            "invalid Lua name `1x` in `allowWrite`",
+        ),
+        (
+            r#"{"kind": "restrictedGlobals", "id": "loading", "include": ["scripts/**"], "forbid": ["string..dump"]}"#,
+            "invalid Lua name path `string..dump` in `forbid`",
+        ),
+    ] {
+        let directory = globals_fixture(rules);
+        let diagnostics = discover_all(directory.path(), None, &[], &[], &lua_registry())
+            .err()
+            .unwrap();
+        assert_eq!(diagnostics[0].code, "CTC1010");
+        assert!(diagnostics[0].message.contains(expected), "{expected}");
+    }
+}
+
+#[test]
+fn global_rules_need_the_lua_adapter() {
+    let directory = globals_fixture(
+        r#"{"kind": "accidentalGlobals", "id": "globals", "include": ["scripts/**"]}"#,
+    );
+    let diagnostics = discover_all(directory.path(), None, &[], &[], &registry())
+        .err()
+        .unwrap();
+    assert_eq!(diagnostics[0].code, "CTC1010");
+    assert!(diagnostics[0].message.contains("`lua` language adapter"));
+}

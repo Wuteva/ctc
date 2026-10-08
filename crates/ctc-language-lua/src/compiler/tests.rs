@@ -216,11 +216,11 @@ fn reports_unsupported_and_invalid_templates() {
 
 #[test]
 fn template_strings_match_by_decoded_value() {
-    let template = compile("local x = require(\"game.parts\")\n", MatchMode::Exact);
+    let template = compile("local x = require(\"app.parts\")\n", MatchMode::Exact);
     assert!(
         run(
             &template,
-            "local x = require 'game.parts'\n",
+            "local x = require 'app.parts'\n",
             SearchScope::TopLevel
         )
         .matches
@@ -228,7 +228,7 @@ fn template_strings_match_by_decoded_value() {
     assert!(
         run(
             &template,
-            "local x = require(\"game.\\112arts\")\n",
+            "local x = require(\"app.\\112arts\")\n",
             SearchScope::TopLevel
         )
         .matches
@@ -281,7 +281,7 @@ fn local_declarations_hold_their_names_and_values() {
     );
     let result = run(
         &template,
-        "local Parts = require(\"game.parts\")\n",
+        "local Parts = require(\"app.parts\")\n",
         SearchScope::TopLevel,
     );
     assert!(result.matches, "{:?}", result.diagnostics);

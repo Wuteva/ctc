@@ -1,7 +1,8 @@
 # Lua guide
 
 This page covers the Lua adapter: file suffixes, template names, Lua 5.5
-syntax support, useful kinds and fields, known limits, and verified recipes.
+syntax support, useful kinds and fields, the Lua project rules, known limits,
+and verified recipes.
 
 Related pages:
 
@@ -129,7 +130,7 @@ matching.
 | Field | Where it occurs | Meaning |
 |---|---|---|
 | `callee` | `CallExpression` | The called text without white space or comments, such as `print`, `string.format`, `self:emit`, or `_G.load` |
-| `module` | `CallExpression` of `require` | The decoded text of the string argument, such as `game.parts` |
+| `module` | `CallExpression` of `require` | The decoded text of the string argument, such as `app.parts` |
 | `local` | `VariableDeclaration`, `ImplicitVariableDeclaration`, `FunctionDeclaration` | `true` when the declaration starts with `local` |
 | `global` | `VariableDeclaration`, `ImplicitVariableDeclaration`, `FunctionDeclaration` | `true` when the declaration starts with `global` |
 
@@ -169,8 +170,13 @@ end
 
 ## Semantic rules
 
-Lua has no Lua-only semantic rules today. It supports the generic
-`companionFile` and `fileLength` rules.
+Lua supports the generic `companionFile` and `fileLength` rules. It also has
+two rules for global variables:
+
+| Kind | Use it for | Details |
+|---|---|---|
+| `accidentalGlobals` | Reads and assignments of global variables that the project did not allow | [Accidental globals](#accidental-globals) |
+| `restrictedGlobals` | Uses of functions that load code or reach the host | [Unrestricted loading](#unrestricted-loading) |
 
 ## Suppression comments
 
@@ -185,12 +191,425 @@ local other = load(text)
 
 `ctc guard` finds Lua suppression comments that a change adds.
 
+The rules `accidentalGlobals` and `restrictedGlobals` accept suppression
+comments when they set `allowIgnore` to `true`. A comment skips the diagnostics
+of the next line. `fileLength` does not parse the file, so a comment has no
+effect on it.
+
+## Lua project rules
+
+Lua scripts need checks that go beyond the shape of the code. This section
+gives four checks and the rules that do them. A project turns the rules on in
+`.ctc.json`.
+
+| Check | Rule | Codes |
+|---|---|---|
+| Accidental globals | `accidentalGlobals` semantic rule | `CTC4401`, `CTC4402` |
+| Unrestricted loading | `restrictedGlobals` semantic rule | `CTC4403`, `CTC4404`, `CTC4405` |
+| Package module structure | Templates | `CTC3002`, `CTC3003`, `CTC3006` |
+| Large functions | Template | `CTC3006` |
+
+A template cannot tell a local variable from a global variable. Thus the first
+two checks are semantic rules, and the adapter resolves names for them. The
+other two checks match syntax, so they are templates. Change the templates for
+your project.
+
+The folder [tests/fixtures/lua-rules](../../tests/fixtures/lua-rules) has a
+complete setup: the template files, a `.ctc.json` file, and Lua files that pass
+and Lua files that fail each rule. File size, coverage, and `guard` are in
+[File size, coverage, and guard](#file-size-coverage-and-guard).
+
+### Accidental globals
+
+The `accidentalGlobals` rule finds each use of a global variable. A global
+variable is a name that no declaration binds. These declarations bind a name:
+
+- `local x` and `local function f`.
+- A function parameter, `self` in a method, and the name after `...`.
+- A loop variable of a `for` statement.
+- A Lua 5.5 declaration: `global x`, `global function f`, and `global *`.
+
+A binding starts after its declaration and ends with its block. Thus
+`local x = x` reads an outer `x`. A function that calls a local function
+before the declaration of this local function reads a global variable.
+
+The rule reports these uses:
+
+| Code | Use |
+|---|---|
+| `CTC4401` | The code reads a global variable that `allow` does not list. |
+| `CTC4402` | The code assigns a global variable that `allowWrite` does not list. |
+
+`function name() end` assigns the global variable `name`.
+`function M.name() end` reads `M` and assigns a field of `M`.
+
+These fields configure the rule:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `allow` | `[]` | Names that the code can read. Use the names that the host gives, such as `ipairs` and `math`. |
+| `allowWrite` | `[]` | Names that the code can assign. |
+
+A name has ASCII letters, digits, and `_`, and it does not start with a digit.
+`allow` lists names, not paths: `math` in `allow` allows `math.floor`.
+`allowWrite` does not allow reads. When the code reads and assigns a name, put
+the name in both fields.
+
+`.ctc.json` rule:
+
+```json
+{
+  "kind": "accidentalGlobals",
+  "id": "no-accidental-globals",
+  "include": ["packages/**/*.lua"],
+  "allow": ["ipairs", "math", "pairs", "require", "string", "table", "tostring"]
+}
+```
+
+Violating source:
+
+```lua
+local counter = {}
+
+function counter.run()
+  return helper(1)
+end
+
+local function helper(value)
+  total = value
+  return total
+end
+
+return counter
+```
+
+Expected diagnostics: `packages/counter.lua:4:10 CTC4401` for `helper`, which
+is a local variable only after line 7, then `packages/counter.lua:8:3 CTC4402`
+and `packages/counter.lua:9:10 CTC4401` for `total`.
+
+These rules apply:
+
+- A field access reads the first name. `math.floor` reads `math`.
+- `_G.name` and `_ENV.name` read the global variable `name`, and `_G.name = 1`
+  assigns it. The rule does not report the use of `_G` in `_G.name`. Any other
+  use of `_G` is a read of `_G`. Put `_G` in `allow` to accept it.
+- `_G[key]` is a global variable that no rule can name when the key is not a
+  string literal. The assignment `_G[key] = value` gives `CTC4402`. A read
+  gives nothing here, but `restrictedGlobals` reports it.
+- A local `_ENV` replaces the global table. The rule reports nothing in the
+  scope of a local `_ENV`.
+- `global *` and `global<const> *` declare every free name in their block. The
+  rule reports nothing there. Do not use the rule on files that start with this
+  declaration.
+
+### Unrestricted loading
+
+The `restrictedGlobals` rule finds the uses of functions that load code or
+reach the host. It checks each use of a name, not only calls. Thus it also
+finds `pcall(load, text)` and `local f = load`. A local variable with the same
+name is not a use of the global variable.
+
+The rule reports these uses:
+
+| Code | Use |
+|---|---|
+| `CTC4403` | The code uses a name that `forbid` lists. |
+| `CTC4404` | The code uses `require` in another way than `require("name")`. |
+| `CTC4405` | The code indexes `_G` or `_ENV` with a key that is not a string literal. |
+
+These fields configure the rule:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `forbid` | See the list below | Names and paths that the code cannot use. |
+| `forbidDynamicRequire` | `true` | Report `CTC4404`. |
+
+The default `forbid` list is `load`, `loadfile`, `loadstring`, `dofile`,
+`setfenv`, `collectgarbage`, `string.dump`, `debug`, `io`, `os`, and `package`.
+A `forbid` list in the rule replaces the default list. An empty list turns the
+name check off.
+
+A name in `forbid` forbids itself and every name below it. `debug` forbids
+`debug.getinfo`. `string.dump` forbids only `string.dump`. The rule also
+reports a value that holds a forbidden name, such as `local s = string` and
+`string[key]` when `string.dump` is forbidden.
+
+`require("app.parts")` and `require "app.parts"` pass. `require(name)`,
+`require("a" .. b)`, and `pcall(require, "x")` give `CTC4404`. To limit the
+module names, add a template rule. See
+[Allowed modules for `require`](#allowed-modules-for-require).
+
+`.ctc.json` rule:
+
+```json
+{
+  "kind": "restrictedGlobals",
+  "id": "no-unrestricted-loading",
+  "include": ["packages/**/*.lua"]
+}
+```
+
+Violating source:
+
+```lua
+local Loader = {}
+
+function Loader.run(text, name)
+  local chunk = load(text)
+  local clock = os.clock()
+  local module = require(name)
+  return chunk, clock, module
+end
+
+return Loader
+```
+
+Expected diagnostics: `packages/loader.lua:4:17 CTC4403` for `load`,
+`packages/loader.lua:5:17 CTC4403` for `os.clock`, and
+`packages/loader.lua:6:18 CTC4404` for `require(name)`.
+
+`accidentalGlobals` also reports a forbidden name that its `allow` list does
+not have. Both reports are correct. Do not put a forbidden name in `allow`.
+
+### Module structure rules
+
+A package module is a file that makes a local table, adds fields to it, and
+returns it. These rules check the structure with templates:
+
+- The top level has no code that runs when the module loads. It has local
+  definitions and fields of the module table.
+- The file ends with `return` and one table.
+
+The templates do not need one table named in the first line. Thus they fit an
+entry point that has several local tables and a table that maps module names to
+them, as the core package has. For a file with exactly one local table, use the
+exact template in
+[Package module structure](#package-module-structure).
+
+Template file `.ctmpl/module-top-level-statement.lua.ctmpl`. It finds a call,
+a `do`, `while`, `repeat`, `if`, or `for` statement, a `goto`, and a label:
+
+```lua
+{{ Statement | kind("CallExpression", "DoStatement", "WhileStatement", "RepeatStatement", "IfStatement", "ForStatement", "GotoStatement", "LabelStatement") }}
+```
+
+Template file `.ctmpl/module-global-assignment.lua.ctmpl`. It finds an
+assignment to names:
+
+```lua
+{{* Targets | kind("Identifier") }} = {{* Values }}
+```
+
+Template file `.ctmpl/module-global-function.lua.ctmpl`. It finds
+`function name() end`, which assigns a global variable:
+
+```lua
+function {{ Name | kind("Identifier") }}({{* Parameters }})
+{{* Body }}
+end
+```
+
+Template file `.ctmpl/module-return-table.lua.ctmpl`:
+
+```lua
+return {{ Module | kind("Identifier", "TableConstructor") }}
+```
+
+`.ctc.json` rules. The first rule lists three templates. The rule fails a file
+when any one of them matches:
+
+```json
+{
+  "id": "module-no-top-level-effects",
+  "template": [
+    ".ctmpl/module-top-level-statement.lua.ctmpl",
+    ".ctmpl/module-global-assignment.lua.ctmpl",
+    ".ctmpl/module-global-function.lua.ctmpl"
+  ],
+  "include": ["packages/**/*.lua"],
+  "mode": "forbid",
+  "scope": "topLevel"
+},
+{
+  "id": "module-returns-table",
+  "template": ".ctmpl/module-return-table.lua.ctmpl",
+  "include": ["packages/**/*.lua"],
+  "mode": "contains"
+}
+```
+
+Passing source:
+
+```lua
+local good = {}
+
+local limit = 3
+
+local function clamp(value)
+  return math.min(value, limit)
+end
+
+function good.run(value)
+  return clamp(value)
+end
+
+good.version = 1
+
+return good
+```
+
+Violating source:
+
+```lua
+local effects = {}
+
+print("loading")
+effects.ready = true
+counter = 0
+
+function register()
+  return effects
+end
+
+return effects
+```
+
+Expected diagnostics: `packages/effects.lua:3:1`, `packages/effects.lua:5:1`,
+and `packages/effects.lua:7:1`, all `CTC3006`. `effects.ready = true` passes,
+because it adds a field to the module table.
+
+Violating sources for the second rule:
+
+```lua
+local first = {}
+local second = {}
+
+return first, second
+```
+
+Expected diagnostic: `packages/two.lua:4:15 CTC3003`. A file without a
+`return` gets `CTC3002`, and the report says that a `ReturnStatement` is
+missing.
+
+The rules do not know the type of the returned name. `return count` passes when
+`count` is a number. They also do not find an assignment to a field of a
+different table, such as `string.dump = nil`. `restrictedGlobals` reports this
+case.
+
+### Module names for `require`
+
+Template file `.ctmpl/package-require.lua.ctmpl`. It finds a `require` call
+whose argument is not a string literal of the form `package.module`, with
+lowercase letters, digits, and `_`:
+
+```lua
+{{ Call | field("callee", "equal", "require") | field("module", "notMatches", "^[a-z0-9_]+(\\.[a-z0-9_]+)+$") }}
+```
+
+`.ctc.json` rule:
+
+```json
+{
+  "id": "package-requires",
+  "template": ".ctmpl/package-require.lua.ctmpl",
+  "include": ["packages/**/*.lua"],
+  "mode": "forbid",
+  "scope": "descendants"
+}
+```
+
+`require("dkjson")` and `require(name)` fail this rule. `require("core.math3")`
+passes.
+
+### Large functions
+
+Template file `.ctmpl/long-function.lua.ctmpl`. The number 100 is the limit.
+Change it to change the limit:
+
+```lua
+{{ Long | kind("FunctionDeclaration", "FunctionExpression") | field("lineCount", "greaterThan", 100) }}
+```
+
+`.ctc.json` rule:
+
+```json
+{
+  "id": "short-lua-functions",
+  "template": ".ctmpl/long-function.lua.ctmpl",
+  "include": ["packages/**/*.lua"],
+  "mode": "forbid",
+  "scope": "descendants",
+  "message": "Split this function. A function can span at most 100 lines."
+}
+```
+
+The template counts all lines of the function, from the line of `function` (or
+`local`) to the line of `end`. Comments and blank lines count. A function of 100
+lines passes. A function of 101 lines fails with `CTC3006` at its first line. A
+function in a function counts in the outer function too.
+
+### Hook functions of a module
+
+A module can export a function that the host calls. This template requires a
+function with two parameters. The names of the parameters do not matter.
+
+Template file `.ctmpl/pre-step.lua.ctmpl`:
+
+```lua
+function {{ Module }}.pre_step({{ Ctx }}, {{ Part }})
+{{* Body }}
+end
+```
+
+`.ctc.json` rule:
+
+```json
+{
+  "id": "part-has-pre-step",
+  "template": ".ctmpl/pre-step.lua.ctmpl",
+  "include": ["packages/*/scripts/server/parts/*.lua"],
+  "mode": "contains",
+  "scope": "topLevel",
+  "message": "A part behavior must define pre_step(ctx, part)."
+}
+```
+
+A module with `function wheel.pre_step(ctx)` fails with `CTC3002`. The report
+says that the capture `Part` is missing.
+
+## File size, coverage, and guard
+
+These parts of `ctc` work for Lua files in the same way as for the other
+languages:
+
+- `fileLength` counts the lines of a file and does not parse it. A Lua file with
+  more lines than `maxLines` gets `CTC4301` at its first line over the limit.
+  See [File length](#file-length).
+- `ctc coverage` lists each `.lua` file in the watched area that no rule
+  selects. A Lua template rule, a Lua semantic rule, and a `fileLength` or
+  `companionFile` rule select a Lua file with their `include` patterns. A
+  template rule of another language does not select it. An uncovered file gets
+  `CTC5101`.
+- `ctc guard` reads the Lua comments of each source file. A
+  `-- ctc-ignore-next-line` comment that a change adds gets `CTC5201`. A rule
+  that selects fewer files, a rule that was removed, and a changed rule
+  definition get `CTC5202` to `CTC5204`. A change of a field such as `allow` or
+  `forbid` is a changed rule definition.
+
+Use all three after each change:
+
+```text
+ctc
+ctc coverage
+ctc guard --base origin/main
+```
+
 ## Known limits
 
-- The adapter does syntax checks only. It does not resolve names. Thus it
-  cannot tell an assignment to a local from an assignment to a global. Use
-  Lua 5.5 global declarations for this check. See
-  [Package module with read-only globals](#package-module-with-read-only-globals).
+- Templates see syntax only. They cannot tell an assignment to a local from an
+  assignment to a global. The adapter resolves names for the semantic rules
+  `accidentalGlobals` and `restrictedGlobals`. Use these rules for checks that
+  need a name.
 - `ctc` reads only UTF-8 files. A file with other bytes gets `CTC1009`. Use
   escapes such as `"\xff"` for other bytes in strings.
 - In a template, `{{` starts a placeholder. Write a nested table constructor
@@ -201,17 +620,31 @@ local other = load(text)
   from search rules.
 - `{{? keyword:local }}` and `{{? keyword:global }}` work only before
   `function`. `local x = 1` and `x = 1` have different kinds.
+- A template is a list of statements. An expression such as
+  `{{ A }} .. {{ B }}` is not a statement, so it is not a valid template. Use a
+  placeholder with a kind, such as
+  `{{ Operation | kind("BinaryExpression", "UnaryExpression") }}`. A template
+  cannot test the operator.
 - The adapter does not check the semantic errors that `luac -p` finds. See
   [Syntax errors](#syntax-errors).
+- The global rules follow names. They do not follow values. A call such as
+  `ctx.load(text)` or `rawget(_G, name)` is outside the rules. The host's
+  runtime limits stay necessary.
 
 ## Rule recipes
 
-Every recipe below was checked against `ctc 0.1.0` in a scratch project.
+Every recipe below was checked against `ctc 0.1.0` in a scratch project. The
+templates of the [Lua project rules](#lua-project-rules) are checked by the
+tests of this repository.
 
 ### No unrestricted loading
 
 Goal: ban `load`, `loadstring`, `loadfile`, and `dofile`, also through `_G`
 and `_ENV`.
+
+This recipe checks calls only. For the full check, use the rule
+[`restrictedGlobals`](#unrestricted-loading). Use the template when you need a
+call pattern of your own, such as a method call.
 
 Template file `.ctmpl/no-load.lua.ctmpl`:
 
@@ -252,12 +685,15 @@ Expected diagnostics: `packages/loader.lua:4:17` and
 `packages/loader.lua:9:10`, both `CTC3006`.
 
 The rule does not find a call through another name, such as
-`local l = load; l(text)`. The runtime limits of the game must still remove
-these functions.
+`local l = load; l(text)`. The host's runtime limits must still remove these
+functions.
 
 ### Package module structure
 
 Goal: each package file makes one local table, adds to it, and returns it.
+
+This exact template fits a file with one local table. For a file with several
+local tables, use the [module structure rules](#module-structure-rules).
 
 Template file `.ctmpl/module-shape.lua.ctmpl`:
 
@@ -318,6 +754,11 @@ Goal: stop accidental global variables. In Lua 5.5, `global<const> *` makes
 all free names read-only. Then `luac` rejects an assignment to an undeclared
 global. This rule makes sure that each package file starts with this
 declaration.
+
+Lua scripts use Lua 5.4 syntax for now, and Lua 5.4 does not have this
+declaration. For these scripts, use the rule
+[`accidentalGlobals`](#accidental-globals). It reports nothing in a file that
+starts with `global<const> *`.
 
 Template file `.ctmpl/strict-module.lua.ctmpl`:
 
@@ -432,13 +873,13 @@ Expected diagnostic: `packages/a.lua:4:1 CTC3006`
 
 ### Allowed modules for `require`
 
-Goal: a package can load only modules under `game.`. The rule also finds a
+Goal: a package can load only modules under `app.`. The rule also finds a
 `require` call whose argument is not a string literal.
 
 Template file `.ctmpl/package-require.lua.ctmpl`:
 
 ```lua
-{{ Call | field("callee", "equal", "require") | field("module", "notMatches", "^game\\.") }}
+{{ Call | field("callee", "equal", "require") | field("module", "notMatches", "^app\\.") }}
 ```
 
 `.ctc.json` rule:
@@ -456,7 +897,7 @@ Template file `.ctmpl/package-require.lua.ctmpl`:
 Violating source:
 
 ```lua
-local Shapes = require("game.shapes")
+local Shapes = require("app.shapes")
 local Json = require("dkjson")
 local name = "os"
 local Os = require(name)
@@ -476,7 +917,7 @@ Template file:
 ```
 
 The limit is 4 lines here only to keep the sample short. Use a real limit,
-such as 60 or 100.
+such as 60 or 100. The [large functions](#large-functions) rule uses 100.
 
 `.ctc.json` rule:
 

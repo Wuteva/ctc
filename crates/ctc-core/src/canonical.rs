@@ -57,6 +57,48 @@ pub struct SemanticFacts {
     pub exceptions: Vec<ExceptionFact>,
     pub calls: Vec<CallFact>,
     pub member_functions: Vec<MemberFunctionFact>,
+    pub globals: Vec<GlobalFact>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GlobalAccessKind {
+    /// The global is used: its value is read, or code reaches a field below it.
+    Read,
+    /// The global itself is assigned: `count = 1` or `function update() end`.
+    Write,
+    /// `_G[key]` or `_ENV[key]` with a key that is not a string literal, used
+    /// as a value.
+    DynamicRead,
+    /// `_G[key] = value` or `_ENV[key] = value` with a key that is not a string
+    /// literal.
+    DynamicWrite,
+}
+
+/// How a global is called, when the access is the callee of a call.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GlobalCall {
+    NotCalled,
+    /// Called with one string literal argument, such as `require("app.parts")`.
+    StringLiteral,
+    /// Called with other arguments.
+    Other,
+}
+
+/// One use of a global variable in a Lua source file. A name that a `local` or
+/// `global` declaration, a parameter, or a loop variable binds is not a global.
+#[derive(Clone, Debug)]
+pub struct GlobalFact {
+    pub kind: GlobalAccessKind,
+    /// The global name, such as `os`. Empty for a dynamic access.
+    pub name: String,
+    /// The name and the string keys that follow it, such as `os.time`.
+    pub path: String,
+    /// True when the path stops at a key that is not a string literal.
+    pub dynamic_key: bool,
+    /// True when the code reached the name with `_G` or `_ENV`.
+    pub via_table: bool,
+    pub call: GlobalCall,
+    pub range: TextRange,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

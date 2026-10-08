@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "module-no-top-level-effects",
+      "template": [
+        ".ctmpl/module-top-level-statement.lua.ctmpl",
+        ".ctmpl/module-global-assignment.lua.ctmpl",
+        ".ctmpl/module-global-function.lua.ctmpl"
+      ],
+      "include": ["packages/**/*.lua"],
+      "mode": "forbid",
+      "scope": "topLevel",
+      "message": "Do no work when the module loads. Put local definitions and fields of the module table at the top level, and move other code into functions."
+    },
+    {
+      "id": "module-returns-table",
+      "template": ".ctmpl/module-return-table.lua.ctmpl",
+      "include": ["packages/**/*.lua"],
+      "mode": "contains",
+      "message": "End the module with `return` and one table: the name of a local table, or a table constructor."
+    },
+    {
+      "id": "package-requires",
+      "template": ".ctmpl/package-require.lua.ctmpl",
+      "include": ["packages/**/*.lua", "tests/lua/**/*.lua"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Call `require` with a string literal of the form `package.module`."
+    },
+    {
+      "id": "short-lua-functions",
+      "template": ".ctmpl/long-function.lua.ctmpl",
+      "include": ["packages/**/*.lua", "tests/lua/**/*.lua"],
+      "mode": "forbid",
+      "scope": "descendants",
+      "message": "Split this function. A function can span at most 100 lines."
+    }
+  ],
+  "semanticRules": [
+    {
+      "kind": "accidentalGlobals",
+      "id": "no-accidental-globals",
+      "include": ["packages/**/*.lua"],
+      "allow": [
+        "assert", "coroutine", "error", "getmetatable", "ipairs", "math", "next", "pairs",
+        "pcall", "rawequal", "rawget", "rawlen", "rawset", "require", "select",
+        "setmetatable", "string", "table", "tonumber", "tostring", "type", "utf8",
+        "xpcall", "_VERSION"
+      ],
+      "message": "Declare the variable with `local`, or use a name that the package state provides."
+    },
+    {
+      "kind": "accidentalGlobals",
+      "id": "no-accidental-globals-in-tests",
+      "include": ["tests/lua/**/*.lua"],
+      "allow": [
+        "assert", "coroutine", "describe", "error", "expect", "getmetatable", "ipairs", "it",
+        "math", "next", "pairs", "pcall", "rawequal", "rawget", "rawlen", "rawset",
+        "require", "select", "setmetatable", "string", "table", "tonumber", "tostring",
+        "type", "utf8", "xpcall", "_VERSION"
+      ],
+      "message": "Declare the variable with `local`, or use a name that the test runner provides."
+    },
+    {
+      "kind": "restrictedGlobals",
+      "id": "no-unrestricted-loading",
+      "include": ["packages/**/*.lua", "tests/lua/**/*.lua"],
+      "message": "Scripts cannot load code, read files, run programs, or use the debug library. Use the functions of `ctx` and `require` with a literal name."
+    },
+    {
+      "kind": "fileLength",
+      "id": "short-lua-files",
+      "include": ["packages/**/*.lua"],
+      "maxLines": 120,
+      "message": "Split this file. A Lua file can have at most 120 lines."
+    }
+  ]
+}
